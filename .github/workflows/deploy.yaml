@@ -28,9 +28,37 @@ jobs:
         run: npm run build
         env:
           REACT_APP_WELCOME_TEXT: ${{ vars.REACT_APP_WELCOME_TEXT }}
+    deploy:
+              
+runs-on: ubuntu-latest
+needs: build
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.1.0
+    steps:
+      - name: Download artifact from build job 
+        uses: actions/download-artifact@v2
         with:
-          branch: gh-pages
-          folder: build
+          name: node-app
+
+      - name: Copy To Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ vars.REMOTE_SERVER }}
+          username: ${{ vars.REMOTE_USER }}
+          password: ${{ secrets.USER_PASSWORD }}
+          source: "."
+          target: /var/www/var/www/testniraj.trayistats/test04-03-2024/${{ github.run_id }}
+
+      - name: Run Scripts on server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ vars.REMOTE_SERVER }}
+          username: ${{ vars.REMOTE_USER }}
+          password: ${{ secrets.USER_PASSWORD }}
+          script: |
+            echo ${{ github.run_number }} 
+            mkdir -p /var/www/var/www/testniraj.trayistats/test04-03-2024/${{ github.run_number }}.${{ github.run_attempt }}
+            mv -f /var/www/var/www/testniraj.trayistats/test04-03-2024/. /var/www/var/www/testniraj.trayistats/test04-03-2024/${{ github.run_number }}.${{ github.run_attempt }}/
+            cp -a /var/www/var/www/testniraj.trayistats/test04-03-2024/${{ github.run_id }}/. /var/www/var/www/testniraj.trayistats/test04-03-2024/
+            cp -R /var/www/common/.htaccess /var/www/var/www/testniraj.trayistats/test04-03-2024/
+            sudo service apache2 restart
+            rm -r /var/www/var/www/testniraj.trayistats/test04-03-2024/${{ github.run_id }}
